@@ -22,30 +22,32 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-
+import os
 import json
 import socket
 import time
 import copy
 import re
-import os
-os.environ["DBUS_SESSION_BUS_ADDRESS"] = "unix:path=/run/user/1000/bus"
 import multiprocessing
+import subprocess
 from threading import Thread
 
 import dbus
 import dbus.service
 from dbus.mainloop.glib import DBusGMainLoop
 
+import gi
+gi.require_version('Playerctl', '2.0')
+from gi.repository import Playerctl, GLib
 
-IDENTITY = 'mps-youtube'
+
+IDENTITY = 'net-mpris'
 
 BUS_NAME = 'org.mpris.MediaPlayer2.' + IDENTITY + '.instance' + str(os.getpid())
 ROOT_INTERFACE = 'org.mpris.MediaPlayer2'
 PLAYER_INTERFACE = 'org.mpris.MediaPlayer2.Player'
 PROPERTIES_INTERFACE = 'org.freedesktop.DBus.Properties'
 MPRIS_PATH = '/org/mpris/MediaPlayer2'
-player = None
 
 class Mpris2Controller:
 
@@ -59,8 +61,6 @@ class Mpris2Controller:
         """
         # Do not import in main process to prevent conflict with pyperclip
         # (https://github.com/mps-youtube/mps-youtube/issues/461)
-        from gi.repository import GLib
-
         self.mpris = None
         self.bus = None
         self.main_loop = GLib.MainLoop()
@@ -121,6 +121,7 @@ class Mpris2Controller:
         if self.bus is not None:
             self.bus.get_bus().request_name(BUS_NAME)
         else:
+            os.environ["DBUS_SESSION_BUS_ADDRESS"] = "unix:path=/run/user/1000/bus"
             self.bus = dbus.service.BusName(BUS_NAME,
                 bus=dbus.SessionBus(mainloop=DBusGMainLoop()))
 
@@ -166,7 +167,7 @@ class Mpris2MediaPlayer(dbus.service.Object):
                     'CanRaise' : False,
                     'HasTrackList' : False,
                     'Identity' : IDENTITY,
-                    'DesktopEntry' : 'mps-youtube',
+                    'DesktopEntry' : 'net-mpris',
                     'SupportedUriSchemes' : dbus.Array([], 's', 1),
                     'SupportedMimeTypes' : dbus.Array([], 's', 1),
                 },
@@ -371,14 +372,16 @@ class Mpris2MediaPlayer(dbus.service.Object):
         """
             Skips to the next track in the tracklist.
         """
-        self._sendcommand(["quit"])
+        os.environ["DBUS_SESSION_BUS_ADDRESS"] = "tcp:host=192.168.1.3,bind=*,port=55556,family=ipv4"
+        subprocess.call(["playerctl", "next"])
 
     @dbus.service.method(PLAYER_INTERFACE)
     def Previous(self):
         """
             Skips to the previous track in the tracklist.
         """
-        self._sendcommand(["quit", 42])
+        os.environ["DBUS_SESSION_BUS_ADDRESS"] = "tcp:host=192.168.1.3,bind=*,port=55556,family=ipv4"
+        subprocess.call(["playerctl", "previous"])
 
     @dbus.service.method(PLAYER_INTERFACE)
     def Pause(self):
@@ -386,13 +389,8 @@ class Mpris2MediaPlayer(dbus.service.Object):
             Pauses playback.
             If playback is already paused, this has no effect.
         """
-        print("PAUSE!!!!")
-        player.pause()
-        # if self.mpv:
-        #     self._sendcommand(["set_property", "pause", True])
-        # else:
-        #     if self.properties[PLAYER_INTERFACE]['read_only']['PlaybackStatus'] != 'Paused':
-        #         self._sendcommand(['pause'])
+        os.environ["DBUS_SESSION_BUS_ADDRESS"] = "tcp:host=192.168.1.3,bind=*,port=55556,family=ipv4"
+        subprocess.call(["playerctl", "pause"])
 
     @dbus.service.method(PLAYER_INTERFACE)
     def PlayPause(self):
@@ -400,31 +398,24 @@ class Mpris2MediaPlayer(dbus.service.Object):
             Pauses playback.
             If playback is already paused, resumes playback.
         """
-        player.play_pause()
-        # if self.mpv:
-        #     self._sendcommand(["cycle", "pause"])
-        # else:
-        #     self._sendcommand(["pause"])
+        os.environ["DBUS_SESSION_BUS_ADDRESS"] = "tcp:host=192.168.1.3,bind=*,port=55556,family=ipv4"
+        subprocess.call(["playerctl", "play-pause"])
 
     @dbus.service.method(PLAYER_INTERFACE)
     def Stop(self):
         """
             Stops playback.
         """
-        self._sendcommand(["quit", 43])
+        os.environ["DBUS_SESSION_BUS_ADDRESS"] = "tcp:host=192.168.1.3,bind=*,port=55556,family=ipv4"
+        subprocess.call(["playerctl", "stop"])
 
     @dbus.service.method(PLAYER_INTERFACE)
     def Play(self):
         """
             Starts or resumes playback.
         """
-        print("PLAY!!!!")
-        player.play()
-        # if self.mpv:
-        #     self._sendcommand(["set_property", "pause", False])
-        # else:
-        #     if self.properties[PLAYER_INTERFACE]['read_only']['PlaybackStatus'] != 'Playing':
-        #         self._sendcommand(['pause'])
+        os.environ["DBUS_SESSION_BUS_ADDRESS"] = "tcp:host=192.168.1.3,bind=*,port=55556,family=ipv4"
+        subprocess.call(["playerctl", "play"])
 
 
     @dbus.service.method(PLAYER_INTERFACE, in_signature='x')
@@ -436,7 +427,14 @@ class Mpris2MediaPlayer(dbus.service.Object):
             Seeks forward in the current track by the specified number
             of microseconds.
         """
-        self._sendcommand(["seek", offset / 10**6])
+        print("SEEKER")
+        position = offset / 10**6
+        if position < 0:
+            position = "{}{}".format(position, "-")
+        else:
+            position = "{}{}".format(position, "+")
+        os.environ["DBUS_SESSION_BUS_ADDRESS"] = "tcp:host=192.168.1.3,bind=*,port=55556,family=ipv4"
+        subprocess.call(["playerctl", "position", position])
 
     @dbus.service.method(PLAYER_INTERFACE, in_signature='ox')
     def SetPosition(self, track_id, position):
@@ -450,8 +448,9 @@ class Mpris2MediaPlayer(dbus.service.Object):
 
             Sets the current track position in microseconds.
         """
-        if track_id == self.properties[PLAYER_INTERFACE]['read_only']['Metadata']['mpris:trackid']:
-            self._sendcommand(["seek", position / 10**6, 'absolute' if self.mpv else 2])
+        print("SETPOSITION")
+        os.environ["DBUS_SESSION_BUS_ADDRESS"] = "tcp:host=192.168.1.3,bind=*,port=55556,family=ipv4"
+        subprocess.call(["playerctl", "position", str(position / 10**6)])
 
     @dbus.service.method(PLAYER_INTERFACE, in_signature='s')
     def OpenUri(self, uri):
@@ -461,7 +460,8 @@ class Mpris2MediaPlayer(dbus.service.Object):
 
             Opens the Uri given as an argument.
         """
-        pass
+        os.environ["DBUS_SESSION_BUS_ADDRESS"] = "tcp:host=192.168.1.3,bind=*,port=55556,family=ipv4"
+        subprocess.call(["playerctl", "open", uri])
 
     @dbus.service.signal(PLAYER_INTERFACE, signature='x')
     def Seeked(self, position):
@@ -596,18 +596,12 @@ t.start()
 # mprisctl.send(('mpv-fifo', '/path/to/fifo'))
 
 os.environ["DBUS_SESSION_BUS_ADDRESS"] = "tcp:host=192.168.1.3,bind=*,port=55556,family=ipv4"
-
-import gi
-gi.require_version('Playerctl', '2.0')
-
-from gi.repository import Playerctl, GLib
-
 player = Playerctl.Player()
 
 def on_metadata(player, metadata):
     mpris_metadata = (metadata['xesam:url'],
                       metadata['xesam:title'],
-                      metadata['mpris:length'] / 1000000.0,
+                      metadata['mpris:length'] / 10**6,
                       metadata['mpris:artUrl'],
                       metadata['xesam:artist'],
                       metadata['xesam:album'])
@@ -632,8 +626,8 @@ def on_stop(player, status):
 
 
 def on_seek(player, position):
-    mprisctl.send(('time-pos', position / 1000000.0))
-    print('Seeked to: {}'.format(position / 1000000.0))
+    mprisctl.send(('time-pos', position / 10**6))
+    print('Seeked to: {}'.format(position / 10**6))
 
 
 def set_status(player, status):
@@ -653,5 +647,5 @@ player.connect('playback-status::stopped', on_stop)
 player.connect('metadata', on_metadata)
 player.connect('seeked', on_seek)
 
-main = GLib.MainLoop()
-main.run()
+looper = GLib.MainLoop()
+looper.run()
