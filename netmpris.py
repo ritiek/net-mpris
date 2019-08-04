@@ -45,6 +45,7 @@ ROOT_INTERFACE = 'org.mpris.MediaPlayer2'
 PLAYER_INTERFACE = 'org.mpris.MediaPlayer2.Player'
 PROPERTIES_INTERFACE = 'org.freedesktop.DBus.Properties'
 MPRIS_PATH = '/org/mpris/MediaPlayer2'
+player = None
 
 class Mpris2Controller:
 
@@ -385,11 +386,13 @@ class Mpris2MediaPlayer(dbus.service.Object):
             Pauses playback.
             If playback is already paused, this has no effect.
         """
-        if self.mpv:
-            self._sendcommand(["set_property", "pause", True])
-        else:
-            if self.properties[PLAYER_INTERFACE]['read_only']['PlaybackStatus'] != 'Paused':
-                self._sendcommand(['pause'])
+        print("PAUSE!!!!")
+        player.pause()
+        # if self.mpv:
+        #     self._sendcommand(["set_property", "pause", True])
+        # else:
+        #     if self.properties[PLAYER_INTERFACE]['read_only']['PlaybackStatus'] != 'Paused':
+        #         self._sendcommand(['pause'])
 
     @dbus.service.method(PLAYER_INTERFACE)
     def PlayPause(self):
@@ -397,10 +400,11 @@ class Mpris2MediaPlayer(dbus.service.Object):
             Pauses playback.
             If playback is already paused, resumes playback.
         """
-        if self.mpv:
-            self._sendcommand(["cycle", "pause"])
-        else:
-            self._sendcommand(["pause"])
+        player.play_pause()
+        # if self.mpv:
+        #     self._sendcommand(["cycle", "pause"])
+        # else:
+        #     self._sendcommand(["pause"])
 
     @dbus.service.method(PLAYER_INTERFACE)
     def Stop(self):
@@ -414,11 +418,14 @@ class Mpris2MediaPlayer(dbus.service.Object):
         """
             Starts or resumes playback.
         """
-        if self.mpv:
-            self._sendcommand(["set_property", "pause", False])
-        else:
-            if self.properties[PLAYER_INTERFACE]['read_only']['PlaybackStatus'] != 'Playing':
-                self._sendcommand(['pause'])
+        print("PLAY!!!!")
+        player.play()
+        # if self.mpv:
+        #     self._sendcommand(["set_property", "pause", False])
+        # else:
+        #     if self.properties[PLAYER_INTERFACE]['read_only']['PlaybackStatus'] != 'Playing':
+        #         self._sendcommand(['pause'])
+
 
     @dbus.service.method(PLAYER_INTERFACE, in_signature='x')
     def Seek(self, offset):
@@ -588,18 +595,19 @@ t.start()
 # mprisctl.send(('socket', sockpath))
 # mprisctl.send(('mpv-fifo', '/path/to/fifo'))
 
-os.environ["DBUS_SESSION_BUS_ADDRESS"] = "tcp:host=122.173.75.177,bind=*,port=55556,family=ipv4"
+os.environ["DBUS_SESSION_BUS_ADDRESS"] = "tcp:host=192.168.1.3,bind=*,port=55556,family=ipv4"
 
 import gi
 gi.require_version('Playerctl', '2.0')
 
 from gi.repository import Playerctl, GLib
+
 player = Playerctl.Player()
 
 def on_metadata(player, metadata):
     mpris_metadata = (metadata['xesam:url'],
                       metadata['xesam:title'],
-                      metadata['mpris:length'],
+                      metadata['mpris:length'] / 1000000.0,
                       metadata['mpris:artUrl'],
                       metadata['xesam:artist'],
                       metadata['xesam:album'])
@@ -622,10 +630,28 @@ def on_stop(player, status):
     mprisctl.send(('stop', True))
     print('Stopped the song: {}'.format(player.get_title()))
 
+
+def on_seek(player, position):
+    mprisctl.send(('time-pos', position / 1000000.0))
+    print('Seeked to: {}'.format(position / 1000000.0))
+
+
+def set_status(player, status):
+    statuses = ("Playing", "Paused", "Stopped")
+    status_fns = (on_play, on_pause, on_stop)
+    fn = status_fns[statuses.index(status)]
+    fn(player, status)
+
+
+on_metadata(player, player.get_property('metadata'))
+set_status(player, player.get_property('status'))
+on_seek(player, player.get_property('position'))
+
 player.connect('playback-status::paused', on_pause)
 player.connect('playback-status::playing', on_play)
 player.connect('playback-status::stopped', on_stop)
 player.connect('metadata', on_metadata)
+player.connect('seeked', on_seek)
 
 main = GLib.MainLoop()
 main.run()
