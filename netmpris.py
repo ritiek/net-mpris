@@ -647,5 +647,16 @@ player.connect('playback-status::stopped', on_stop)
 player.connect('metadata', on_metadata)
 player.connect('seeked', on_seek)
 
+on_seek(player, player.get_position())
+
+def auto_seek(player):
+    while True:
+        on_seek(player, player.get_property('position'))
+        time.sleep(1)
+
+
+auto_seeker = Thread(target=auto_seek, args=(player,))
+auto_seeker.start()
+
 looper = GLib.MainLoop()
 looper.run()
