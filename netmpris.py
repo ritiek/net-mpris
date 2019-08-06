@@ -24,7 +24,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 import os
 import json
-import socket
 import time
 import copy
 import re
@@ -578,7 +577,7 @@ def set_status(player, status):
 
 on_metadata(player, player.get_property('metadata'))
 set_status(player, player.get_property('status'))
-on_seek(player, player.get_property('position'))
+# on_seek(player, player.get_property('position'))
 
 player.connect('playback-status::paused', on_pause)
 player.connect('playback-status::playing', on_play)
@@ -586,16 +585,23 @@ player.connect('playback-status::stopped', on_stop)
 player.connect('metadata', on_metadata)
 player.connect('seeked', on_seek)
 
-on_seek(player, player.get_position())
+
+kill_me = False
 
 def auto_seek(player):
+    global kill_me
     while True:
+        if kill_me:
+            break
         on_seek(player, player.get_property('position'))
         time.sleep(1)
 
 
-# auto_seeker = Thread(target=auto_seek, args=(player,))
-# auto_seeker.start()
+auto_seeker = Thread(target=auto_seek, args=(player,))
+auto_seeker.start()
 
 looper = GLib.MainLoop()
-looper.run()
+try:
+    looper.run()
+except KeyboardInterrupt:
+    kill_me = True
