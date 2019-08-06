@@ -101,14 +101,7 @@ class Mpris2Controller:
                 data = conn.recv()
                 if isinstance(data, tuple):
                     name, val = data
-                    if name == 'socket':
-                        Thread(target=self.mpris.bindmpv, args=(val,)).start()
-                    elif name == 'mplayer-fifo':
-                        self.mpris.bindfifo(val)
-                    elif name == 'mpv-fifo':
-                        self.mpris.bindfifo(val, mpv=True)
-                    else:
-                        self.mpris.setproperty(name, val)
+                    self.mpris.setproperty(name, val)
             except IOError:
                 break
             except KeyboardInterrupt:
@@ -158,7 +151,6 @@ class Mpris2MediaPlayer(dbus.service.Object):
         dbus.service.Object.__init__(self, bus, MPRIS_PATH)
         self.socket = None
         self.fifo = None
-        self.mpv = False
         self.properties = {
             ROOT_INTERFACE : {
                 'read_only' : {
@@ -196,59 +188,6 @@ class Mpris2MediaPlayer(dbus.service.Object):
                 },
             },
         }
-
-    def bindmpv(self, sockpath):
-        """
-            init JSON IPC for new versions of mpv >= 0.7
-        """
-        self.mpv = True
-        self.socket = socket.socket(socket.AF_UNIX)
-        # wait on socket initialization
-        tries = 0
-        while tries < 10:
-            time.sleep(.5)
-            try:
-                self.socket.connect(sockpath)
-                break
-            except socket.error:
-                pass
-            tries += 1
-        else:
-            return
-
-        try:
-            observe_full = False
-            self._sendcommand(["observe_property", 1, "time-pos"])
-
-            for line in self.socket.makefile():
-                resp = json.loads(line)
-
-                # deals with bug in mpv 0.7 - 0.7.3
-                if resp.get('event') == 'property-change' and not observe_full:
-                    self._sendcommand(["observe_property", 2, "volume"])
-                    self._sendcommand(["observe_property", 3, "pause"])
-                    self._sendcommand(["observe_property", 4, "seeking"])
-                    observe_full = True
-
-                if resp.get('event') == 'property-change':
-                    self.setproperty(resp['name'], resp['data'])
-
-        except socket.error:
-            self.socket = None
-            self.mpv = False
-
-    def bindfifo(self, fifopath, mpv=False):
-        """
-            init command fifo for mplayer and old versions of mpv
-        """
-        time.sleep(1) # give it some time so fifo could be properly created
-        try:
-            self.fifo = open(fifopath, 'w')
-            self._sendcommand(['get_property', 'volume'])
-            self.mpv = mpv
-
-        except IOError:
-            self.fifo = None
 
     def setproperty(self, name, val):
         """
@@ -336,9 +275,9 @@ class Mpris2MediaPlayer(dbus.service.Object):
             command = command[:]
             for x, i in enumerate(command):
                 if i is True:
-                    command[x] = 'yes' if self.mpv else 1
+                    command[x] = 1
                 elif i is False:
-                    command[x] = 'no' if self.mpv else 0
+                    command[x] = 0
 
             cmd = " ".join([str(i) for i in command]) + '\n'
             self.fifo.write(cmd)
@@ -372,7 +311,7 @@ class Mpris2MediaPlayer(dbus.service.Object):
         """
             Skips to the next track in the tracklist.
         """
-        os.environ["DBUS_SESSION_BUS_ADDRESS"] = "tcp:host=192.168.1.3,bind=*,port=55556,family=ipv4"
+        os.environ["DBUS_SESSION_BUS_ADDRESS"] = "tcp:host=localhost,bind=*,port=55556,family=ipv4"
         subprocess.call(["playerctl", "next"])
 
     @dbus.service.method(PLAYER_INTERFACE)
@@ -380,7 +319,7 @@ class Mpris2MediaPlayer(dbus.service.Object):
         """
             Skips to the previous track in the tracklist.
         """
-        os.environ["DBUS_SESSION_BUS_ADDRESS"] = "tcp:host=192.168.1.3,bind=*,port=55556,family=ipv4"
+        os.environ["DBUS_SESSION_BUS_ADDRESS"] = "tcp:host=localhost,bind=*,port=55556,family=ipv4"
         subprocess.call(["playerctl", "previous"])
 
     @dbus.service.method(PLAYER_INTERFACE)
@@ -389,7 +328,7 @@ class Mpris2MediaPlayer(dbus.service.Object):
             Pauses playback.
             If playback is already paused, this has no effect.
         """
-        os.environ["DBUS_SESSION_BUS_ADDRESS"] = "tcp:host=192.168.1.3,bind=*,port=55556,family=ipv4"
+        os.environ["DBUS_SESSION_BUS_ADDRESS"] = "tcp:host=localhost,bind=*,port=55556,family=ipv4"
         subprocess.call(["playerctl", "pause"])
 
     @dbus.service.method(PLAYER_INTERFACE)
@@ -398,7 +337,7 @@ class Mpris2MediaPlayer(dbus.service.Object):
             Pauses playback.
             If playback is already paused, resumes playback.
         """
-        os.environ["DBUS_SESSION_BUS_ADDRESS"] = "tcp:host=192.168.1.3,bind=*,port=55556,family=ipv4"
+        os.environ["DBUS_SESSION_BUS_ADDRESS"] = "tcp:host=localhost,bind=*,port=55556,family=ipv4"
         subprocess.call(["playerctl", "play-pause"])
 
     @dbus.service.method(PLAYER_INTERFACE)
@@ -406,7 +345,7 @@ class Mpris2MediaPlayer(dbus.service.Object):
         """
             Stops playback.
         """
-        os.environ["DBUS_SESSION_BUS_ADDRESS"] = "tcp:host=192.168.1.3,bind=*,port=55556,family=ipv4"
+        os.environ["DBUS_SESSION_BUS_ADDRESS"] = "tcp:host=localhost,bind=*,port=55556,family=ipv4"
         subprocess.call(["playerctl", "stop"])
 
     @dbus.service.method(PLAYER_INTERFACE)
@@ -414,7 +353,7 @@ class Mpris2MediaPlayer(dbus.service.Object):
         """
             Starts or resumes playback.
         """
-        os.environ["DBUS_SESSION_BUS_ADDRESS"] = "tcp:host=192.168.1.3,bind=*,port=55556,family=ipv4"
+        os.environ["DBUS_SESSION_BUS_ADDRESS"] = "tcp:host=localhost,bind=*,port=55556,family=ipv4"
         subprocess.call(["playerctl", "play"])
 
 
@@ -433,7 +372,7 @@ class Mpris2MediaPlayer(dbus.service.Object):
             position = "{}{}".format(position, "-")
         else:
             position = "{}{}".format(position, "+")
-        os.environ["DBUS_SESSION_BUS_ADDRESS"] = "tcp:host=192.168.1.3,bind=*,port=55556,family=ipv4"
+        os.environ["DBUS_SESSION_BUS_ADDRESS"] = "tcp:host=localhost,bind=*,port=55556,family=ipv4"
         subprocess.call(["playerctl", "position", position])
 
     @dbus.service.method(PLAYER_INTERFACE, in_signature='ox')
@@ -449,7 +388,7 @@ class Mpris2MediaPlayer(dbus.service.Object):
             Sets the current track position in microseconds.
         """
         print("SETPOSITION")
-        os.environ["DBUS_SESSION_BUS_ADDRESS"] = "tcp:host=192.168.1.3,bind=*,port=55556,family=ipv4"
+        os.environ["DBUS_SESSION_BUS_ADDRESS"] = "tcp:host=localhost,bind=*,port=55556,family=ipv4"
         subprocess.call(["playerctl", "position", str(position / 10**6)])
 
     @dbus.service.method(PLAYER_INTERFACE, in_signature='s')
@@ -460,7 +399,7 @@ class Mpris2MediaPlayer(dbus.service.Object):
 
             Opens the Uri given as an argument.
         """
-        os.environ["DBUS_SESSION_BUS_ADDRESS"] = "tcp:host=192.168.1.3,bind=*,port=55556,family=ipv4"
+        os.environ["DBUS_SESSION_BUS_ADDRESS"] = "tcp:host=localhost,bind=*,port=55556,family=ipv4"
         subprocess.call(["playerctl", "open", uri])
 
     @dbus.service.signal(PLAYER_INTERFACE, signature='x')
@@ -595,7 +534,7 @@ t.start()
 # mprisctl.send(('socket', sockpath))
 # mprisctl.send(('mpv-fifo', '/path/to/fifo'))
 
-os.environ["DBUS_SESSION_BUS_ADDRESS"] = "tcp:host=192.168.1.3,bind=*,port=55556,family=ipv4"
+os.environ["DBUS_SESSION_BUS_ADDRESS"] = "tcp:host=localhost,bind=*,port=55556,family=ipv4"
 player = Playerctl.Player()
 
 def on_metadata(player, metadata):
@@ -655,8 +594,8 @@ def auto_seek(player):
         time.sleep(1)
 
 
-auto_seeker = Thread(target=auto_seek, args=(player,))
-auto_seeker.start()
+# auto_seeker = Thread(target=auto_seek, args=(player,))
+# auto_seeker.start()
 
 looper = GLib.MainLoop()
 looper.run()
