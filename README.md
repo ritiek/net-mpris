@@ -12,7 +12,7 @@ controllable from your desktop environment's sound applet. Such as here we have 
 mps-youtube playing some music on my Raspberry Pi and me able to control it via my main machine
 from my Cinnamon's default sound applet:
 
-<img src="https://i.imgur.com/C1lfhcx.png" width="300">
+<img src="https://i.imgur.com/C1lfhcx.png">
 
 mps-youtube interfaces with MPRIS specification and allows for controls such as Play/Pause, Stop,
 Previous/Next track and Seeking. I can do all of these from my Cinnamon's sound applet.
