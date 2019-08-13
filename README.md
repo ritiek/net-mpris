@@ -130,5 +130,5 @@ possible. I'm up for all thoughts!
 
 ## License
 
-I'm GPL fan but since most of the code here is taken from [mps-youtube](https://github.com/mps-youtube/mps-youtube)
+I'm no GPL fan but since most of the code here is taken from [mps-youtube](https://github.com/mps-youtube/mps-youtube)
 which is GPL licensed, it makes some sense to also keep this GPL to avoid any potential conflics.
