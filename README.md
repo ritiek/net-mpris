@@ -96,7 +96,7 @@ Now, let's make sure everything is setup correctly so far.
 
 Point the D-Bus session bus on your client machine to the on running on the server:
 ```
-$ export export DBUS_SESSION_BUS_ADDRESS='tcp:host=192.168.1.5,port=55556,family=ipv4
+$ export DBUS_SESSION_BUS_ADDRESS='tcp:host=192.168.1.5,port=55556,family=ipv4
 ```
 (Replace the IP address and port where D-Bus is listening on the host machine)
 
