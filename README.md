@@ -6,7 +6,7 @@ D-Bus only works on \*nix systems, so this isn't going to work on Windows.
 
 ## What it does?
 
-Once everything is correctly setup, you'll be able to control remote MPRIS supported media players
+Once you have everything correctly setup, you'll be able to control remote MPRIS supported media players
 as if that remote media player was running on your machine. The media player will show up and be
 controllable from your desktop environment's sound applet. Such as here we have an instance of
 mps-youtube playing some music on my Raspberry Pi and me able to control it via my main machine
@@ -23,7 +23,7 @@ remote media player instance.
 
 ## Setting up D-Bus and net-mpris
 
-You'll need to go through these steps before you can use net-mpris.
+You'll need to go through a series of steps before you can use net-mpris to do something like above.
 
 Setting up the environment isn't so trivial. You'll need to make these arrangements before a machine
 can mimic a remote D-Bus session.
