@@ -22,6 +22,41 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 """
+
+import argparse
+
+def get_arguments():
+    """
+    Parses arguments off the command-line.
+    """
+
+    parser = argparse.ArgumentParser(
+        description=("Control a remote D-Bus session as if it was running on the "
+                     "default D-Bus session bus on your machine"),
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+
+    parser.add_argument(
+        "host",
+        metavar="HOST",
+        type=str,
+        help="D-Bus host address of the remote machine",
+    )
+    parser.add_argument(
+        "-p",
+        "--port",
+        type=int,
+        default=55556,
+        help="D-Bus port of the remote machine",
+    )
+    return parser.parse_args()
+
+args = get_arguments()
+local_dbus_session = "unix:path=/run/user/1000/bus"
+remote_dbus_session = "tcp:host={},bind=*,port={},family=ipv4".format(
+                        args.host,
+                        args.port)
+
 import os
 import json
 import time
@@ -47,6 +82,7 @@ ROOT_INTERFACE = 'org.mpris.MediaPlayer2'
 PLAYER_INTERFACE = 'org.mpris.MediaPlayer2.Player'
 PROPERTIES_INTERFACE = 'org.freedesktop.DBus.Properties'
 MPRIS_PATH = '/org/mpris/MediaPlayer2'
+
 
 class Mpris2Controller:
 
@@ -113,7 +149,7 @@ class Mpris2Controller:
         if self.bus is not None:
             self.bus.get_bus().request_name(BUS_NAME)
         else:
-            os.environ["DBUS_SESSION_BUS_ADDRESS"] = "unix:path=/run/user/1000/bus"
+            os.environ["DBUS_SESSION_BUS_ADDRESS"] = local_dbus_session
             self.bus = dbus.service.BusName(BUS_NAME,
                 bus=dbus.SessionBus(mainloop=DBusGMainLoop()))
 
@@ -310,7 +346,7 @@ class Mpris2MediaPlayer(dbus.service.Object):
         """
             Skips to the next track in the tracklist.
         """
-        os.environ["DBUS_SESSION_BUS_ADDRESS"] = "tcp:host=localhost,bind=*,port=55556,family=ipv4"
+        os.environ["DBUS_SESSION_BUS_ADDRESS"] = remote_dbus_session
         subprocess.call(["playerctl", "next"])
 
     @dbus.service.method(PLAYER_INTERFACE)
@@ -318,7 +354,7 @@ class Mpris2MediaPlayer(dbus.service.Object):
         """
             Skips to the previous track in the tracklist.
         """
-        os.environ["DBUS_SESSION_BUS_ADDRESS"] = "tcp:host=localhost,bind=*,port=55556,family=ipv4"
+        os.environ["DBUS_SESSION_BUS_ADDRESS"] = remote_dbus_session
         subprocess.call(["playerctl", "previous"])
 
     @dbus.service.method(PLAYER_INTERFACE)
@@ -327,7 +363,7 @@ class Mpris2MediaPlayer(dbus.service.Object):
             Pauses playback.
             If playback is already paused, this has no effect.
         """
-        os.environ["DBUS_SESSION_BUS_ADDRESS"] = "tcp:host=localhost,bind=*,port=55556,family=ipv4"
+        os.environ["DBUS_SESSION_BUS_ADDRESS"] = remote_dbus_session
         subprocess.call(["playerctl", "pause"])
 
     @dbus.service.method(PLAYER_INTERFACE)
@@ -336,7 +372,7 @@ class Mpris2MediaPlayer(dbus.service.Object):
             Pauses playback.
             If playback is already paused, resumes playback.
         """
-        os.environ["DBUS_SESSION_BUS_ADDRESS"] = "tcp:host=localhost,bind=*,port=55556,family=ipv4"
+        os.environ["DBUS_SESSION_BUS_ADDRESS"] = remote_dbus_session
         subprocess.call(["playerctl", "play-pause"])
 
     @dbus.service.method(PLAYER_INTERFACE)
@@ -344,7 +380,7 @@ class Mpris2MediaPlayer(dbus.service.Object):
         """
             Stops playback.
         """
-        os.environ["DBUS_SESSION_BUS_ADDRESS"] = "tcp:host=localhost,bind=*,port=55556,family=ipv4"
+        os.environ["DBUS_SESSION_BUS_ADDRESS"] = remote_dbus_session
         subprocess.call(["playerctl", "stop"])
 
     @dbus.service.method(PLAYER_INTERFACE)
@@ -352,7 +388,7 @@ class Mpris2MediaPlayer(dbus.service.Object):
         """
             Starts or resumes playback.
         """
-        os.environ["DBUS_SESSION_BUS_ADDRESS"] = "tcp:host=localhost,bind=*,port=55556,family=ipv4"
+        os.environ["DBUS_SESSION_BUS_ADDRESS"] = remote_dbus_session
         subprocess.call(["playerctl", "play"])
 
 
@@ -371,7 +407,7 @@ class Mpris2MediaPlayer(dbus.service.Object):
             position = "{}{}".format(position, "-")
         else:
             position = "{}{}".format(position, "+")
-        os.environ["DBUS_SESSION_BUS_ADDRESS"] = "tcp:host=localhost,bind=*,port=55556,family=ipv4"
+        os.environ["DBUS_SESSION_BUS_ADDRESS"] = remote_dbus_session
         subprocess.call(["playerctl", "position", position])
 
     @dbus.service.method(PLAYER_INTERFACE, in_signature='ox')
@@ -387,7 +423,7 @@ class Mpris2MediaPlayer(dbus.service.Object):
             Sets the current track position in microseconds.
         """
         print("SETPOSITION")
-        os.environ["DBUS_SESSION_BUS_ADDRESS"] = "tcp:host=localhost,bind=*,port=55556,family=ipv4"
+        os.environ["DBUS_SESSION_BUS_ADDRESS"] = remote_dbus_session
         subprocess.call(["playerctl", "position", str(position / 10**6)])
 
     @dbus.service.method(PLAYER_INTERFACE, in_signature='s')
@@ -398,7 +434,7 @@ class Mpris2MediaPlayer(dbus.service.Object):
 
             Opens the Uri given as an argument.
         """
-        os.environ["DBUS_SESSION_BUS_ADDRESS"] = "tcp:host=localhost,bind=*,port=55556,family=ipv4"
+        os.environ["DBUS_SESSION_BUS_ADDRESS"] = remote_dbus_session
         subprocess.call(["playerctl", "open", uri])
 
     @dbus.service.signal(PLAYER_INTERFACE, signature='x')
@@ -533,7 +569,7 @@ t.start()
 # mprisctl.send(('socket', sockpath))
 # mprisctl.send(('mpv-fifo', '/path/to/fifo'))
 
-os.environ["DBUS_SESSION_BUS_ADDRESS"] = "tcp:host=localhost,bind=*,port=55556,family=ipv4"
+os.environ["DBUS_SESSION_BUS_ADDRESS"] = remote_dbus_session
 player = Playerctl.Player()
 
 def on_metadata(player, metadata):
