@@ -77,7 +77,6 @@ On the client machine (the one which will gain controls to the media player runn
 you'll need to install [playerctl](https://github.com/acrisci/playerctl)
 ([64-bit releases](https://github.com/acrisci/playerctl/releases) and
 [Raspberry Pi releases](http://raspbian.raspberrypi.org/raspbian/pool/main/p/playerctl/))
-
 and `dbus-python` from PyPI:
 ```
 $ pip3 install dbus-python
@@ -119,6 +118,22 @@ $ python3 netmpris.py 192.168.1.5 -p 55556
 and you should have the media player in your sound applet and should also be controllable from multimedia
 keys on your keyboard!
 
+----------
+
+This initial setup may be cucumbersome but it isn't so bad the next time you wish to remote control
+MPRIS supported players. On the host machine, you would just need to export a new D-Bus session and run
+an MPRIS compatible media player:
+```
+$ eval $(dbus-launch --auto-syntax)
+$ <some-media-player-launch-command>
+```
+
+On the client machine, you could then run net-mpris with:
+```
+python3 netmpris.py <host-address> -p <dbus-port>
+```
+
+and everything should work correctly.
 
 ## Alternate ways?
 
