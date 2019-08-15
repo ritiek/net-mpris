@@ -6,12 +6,13 @@ D-Bus only works on \*nix systems, so this isn't going to work on Windows.
 
 ## What it does?
 
-Once you have everything correctly setup, you'll be able to control remote MPRIS supported media players
-as if that remote media player was running on your machine. The media player will show up and be
-controllable from your desktop environment's sound applet. Such as here we have an instance of
-mps-youtube playing some music on my Raspberry Pi and me able to control it via my main machine
-from my Cinnamon's default sound applet:
-
+Once you have everything correctly setup, you'll be able to control remote MPRIS supported media
+players (like [mps-youtube](https://github.com/mps-youtube/mps-youtube), Spotify, etc.) as if that
+remote media player was running on your machine. The media player will show up and be controllable
+from your desktop environment's sound applet. Such as here we have an instance of mps-youtube playing
+some music on my Raspberry Pi and me able to control it via my main machine from my Cinnamon's
+default sound applet:
+ 
 <img src="https://i.imgur.com/C1lfhcx.png">
 
 mps-youtube interfaces with MPRIS specification and allows for controls such as Play/Pause, Stop,
@@ -20,6 +21,10 @@ Previous/Next track and Seeking. I can do all of these from my Cinnamon's sound 
 One can also use multimedia keys on their keyboard (or set custom hotkeys) to control playback on the
 remote media player instance.
 
+However, the Cinnamon sound applet and multimedia keys affects the volume levels at a system level
+and not via the MPRIS specification. So, changing the volume through this way will only change your
+local machine's volume levels and WILL NOT AFFECT the volume levels on the remote media player's
+instance!
 
 ## Setting up D-Bus and net-mpris
 
@@ -130,7 +135,7 @@ $ <some-media-player-launch-command>
 
 On the client machine, you could then run net-mpris with:
 ```
-python3 netmpris.py <host-address> -p <dbus-port>
+$ python3 netmpris.py <host-address> -p <dbus-port>
 ```
 
 and everything should work correctly.
