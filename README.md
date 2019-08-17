@@ -126,11 +126,15 @@ keys on your keyboard!
 ----------
 
 This initial setup may be cucumbersome but it isn't so bad the next time you wish to remote control
-MPRIS supported players. On the host machine, you would just need to export a new D-Bus session and run
-an MPRIS compatible media player:
+MPRIS supported players. On the host machine, you would just need to prefix your MPRIS compatible media
+player command with `dbus-launch`:
 ```
-$ eval $(dbus-launch --auto-syntax)
-$ <some-media-player-launch-command>
+$ dbus-launch <some-media-player-launch-command>
+```
+
+For example:
+```
+$ dbus-launch spotify
 ```
 
 On the client machine, you could then run net-mpris with:
