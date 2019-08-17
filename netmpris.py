@@ -49,6 +49,12 @@ def get_arguments():
         default=55556,
         help="D-Bus port of the remote machine",
     )
+    parser.add_argument(
+        "--instant-error",
+        action="store_true",
+        help=("Error out instantly if the remote connection or "
+              "player is not available"),
+    )
     return parser.parse_args()
 
 args = get_arguments()
@@ -570,7 +576,6 @@ t.start()
 # mprisctl.send(('mpv-fifo', '/path/to/fifo'))
 
 os.environ["DBUS_SESSION_BUS_ADDRESS"] = remote_dbus_session
-player = Playerctl.Player()
 
 def on_metadata(player, metadata):
     mpris_metadata = (metadata['xesam:url'],
@@ -609,6 +614,30 @@ def set_status(player, status):
     status_fns = (on_play, on_pause, on_stop)
     fn = status_fns[statuses.index(status)]
     fn(player, status)
+
+
+if args.instant_error:
+    player = Playerctl.Player()
+else:
+    print("Waiting for connection")
+    while True:
+        try:
+            player = Playerctl.Player()
+            player.get_title()
+        except GLib.Error:
+            del player
+            time.sleep(2)
+        else:
+            break
+
+    print("Waiting for player")
+    while True:
+        try:
+            assert player.get_title()
+        except AssertionError:
+            time.sleep(2)
+        else:
+            break
 
 
 on_metadata(player, player.get_property('metadata'))
