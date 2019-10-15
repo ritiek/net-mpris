@@ -98,7 +98,7 @@ in the extracted directory and it should now be installed ok.
 
 Now, let's make sure everything is setup correctly so far.
 
-Point the D-Bus session bus on your client machine to the on running on the server:
+Point the D-Bus session bus on your client machine to the one running on the server:
 ```
 $ export DBUS_SESSION_BUS_ADDRESS='tcp:host=192.168.1.5,port=55556,family=ipv4
 ```
